@@ -1,0 +1,31 @@
+[InitialPacmanX]
+14
+[InitialPacmanY]
+15
+[EnemiesNumber]
+20
+[TrophiesAmount]
+20
+[TileSet]
+Resources/Images/walls5.png
+[Map]
+ XXXX XXXXXXXXXXXXXXXXX XXXX 
+ +   +     +XX XX+     +   + 
+  XXBWBXXXX XX XX XXXXBWBXX  
+X XXBWBXXXX XX XX XXXXBWBXX X
+X+   +  +  +  +  +  +  +   +X
+X XXX BB XXXXXBXXXXX BB XXX X
+X+   +WW+   +XBX+   +WW+   +X
+X XXX BBXXXX XBX XXXXBB XXX X
+X BBB BB+   + + +   +BB BBB X
+ +WWW+  +XXXXX XXXXX+  +WWW+ 
+X BBB BB XXXXX XXXXX BB BBB X
+X XXX BB+   + + +   +BB XXX X
+X XXX BBXXXX XBX XXXXBB XXX X
+X+   +WW+   +CCC+   +WW+   +X
+X XXB BB XXXXCCCXXXX BB BXX X
+X XXB+  + +ooo ooo+ +  +BXX X
+X XXBWBCCC XXXXXXX CCCBWBXX X
+X XXBWBCCC+XXXMXXX+CCCBWBXX X
+ +   +    +XXXXXXX+    +   + 
+ XXXX XXXXXCCCCCCCXXXXX XXXX 
