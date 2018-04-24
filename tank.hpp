@@ -63,11 +63,11 @@ private:
     int health_;
     int score_;
     int sourceX_, sourceY_;
+    ALLEGRO_BITMAP *bitmap_;
     ALLEGRO_SAMPLE *shotSound_;
     ALLEGRO_SAMPLE *explosionSound_;
     Game *game_;
-    bool isAlive_ = true;
-    ALLEGRO_BITMAP *bitmap_;
+    bool isAlive_ = true;    
     float imageAngle_;
     int tileSize_;
     int x_, y_;

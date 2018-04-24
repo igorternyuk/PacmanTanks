@@ -26,7 +26,6 @@ public:
     ALLEGRO_BITMAP *getBitmapProjectile() const;
 
 private:
-
     enum
     {
         SCREEN_WIDTH  = 870,
@@ -34,10 +33,20 @@ private:
         WINDOW_LEFT = 200,
         WINDOW_TOP = 50
     };
+
+    enum GameState
+    {
+        PLAYING,
+        PAUSED,
+        VICTORY,
+        DEFEAT
+    };
+
     const std::string WINDOW_TITLE = "Tanks";
     const std::string GAME_PAUSED_TEXT = "GAME PAUSED";
     const std::string WIN_MESSAGE_TEXT = "YOU WON!";
     const std::string LOST_MESSAGE_TEXT = "YOU LOST";
+    const std::string PATH_TO_SETTINGS_FILE = "settings.txt";
 
     ALLEGRO_DISPLAY *display_;
     ALLEGRO_BITMAP *bitmapWall_;
@@ -80,26 +89,39 @@ private:
     std::vector<std::unique_ptr<Projectile>> projectiles_;
 
     bool render_ = true;
-    bool done_ = false;
-    bool isWin_ = false;
-    bool isGameOver_ = false;
-    bool isGamePaused_ = false;
+    bool isRunning_ = true;
+    GameState gameState_ = GameState::PLAYING;
 
-    void init();
-    bool loadSettings(const std::string &fileName);
+    void update();
+    void enemiesTimerEvent();
+    void projectilesTimerEvent();
+    void shotTimerEvent();
+    void handlePacmanCollisions();
+    void checkWin();
+    void render();
+
+    void initAllegro5();
+    void loadSettings(const std::string &fileName);
+    void loadBitmaps();
+    void loadSounds();
+    void loadFonts();
+    void createTimers();
+    void destroyBitmaps();
+    void destroyFonts();
+    void destroySounds();
+    void destroyTimers();
     void prepareNewGame();
     void createTrophies();
     void createTrophyOnRandPos();
     void createEnemies();
+    void togglePause();
     void addEnemies();
     int  countAliveEnemies();
     void moveProjectiles();
     void resolveCollisions(Tank *tank);
     void startAllTimers();
     void stopAllTimers();
-    void enemiesTimerEvent();
-    void projectilesTimerEvent();
-    void shotTimerEvent();
+
     void renderProjectiles();
     void renderMap();
     void renderText(const int &textLeft, const int &textTop,

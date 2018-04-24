@@ -6,46 +6,19 @@
 #include <fstream>
 #include <sstream>
 #include <iostream>
+#include <stdexcept>
 
 Game::Game()
 {
-    // Инициализируем библиотеку аллегро
-    init();
-
-    if(!loadSettings("settings.txt"))
-    {
-        al_show_native_message_box(nullptr, nullptr, nullptr,
-                                   "Could not load settings", nullptr, 0);
-        done_ = true;
-    }
-
-    bitmapTank_ = al_load_bitmap("Resources/Images/tank.png");
-    bitmapProjectile_ = al_load_bitmap("Resources/Images/projectile.png");
-    bitmapPacmanHealth_ = al_load_bitmap("Resources/Images/health.png");
-
-    // Load fonts
-    smallFont_ = al_load_font("Resources/Fonts/DroidSansMono.ttf", 36, 0);
-    middleFont_ = al_load_font("Resources/Fonts/DroidSansMono.ttf", 52, 0);
-    largeFont_ = al_load_font("Resources/Fonts/DroidSansMono.ttf", 120, 0);
-
-    //Load sound effects
-    shotSound_ = al_load_sample("Resources/Sounds/shot.wav");
-    explosion_ = al_load_sample("Resources/Sounds/explosion.wav");
-    al_reserve_samples(3);
-    backgroundSound_ = al_load_sample("Resources/Sounds/TankMov.wav");
-    backgroundInstance_ = al_create_sample_instance(backgroundSound_);
-    al_set_sample_instance_playmode(backgroundInstance_ , ALLEGRO_PLAYMODE_LOOP);
-    al_attach_sample_instance_to_mixer(backgroundInstance_ , al_get_default_mixer());
-
-    //Timers
-    pacTimer_ = al_create_timer(1 / pacmanMovingSpeed);
-    enemyTimer_ = al_create_timer(1 / enemiesMovingSpeed);    
-    newEnemyTimer_ = al_create_timer(newEnemyFrequency);    
-    newTrophyTimer_ = al_create_timer(newTrophyFrequency);    
-    shotTimer_ = al_create_timer(1 / enemiesShootingSpeed);    
-    projectileTimer_ = al_create_timer(1 / projectilesMovingSpeed);
+    initAllegro5();
+    loadSettings(PATH_TO_SETTINGS_FILE);
+    loadBitmaps();
+    loadFonts();
+    loadSounds();
+    createTimers();
 
     eventQueue_ = al_create_event_queue();
+
     al_register_event_source(eventQueue_, al_get_timer_event_source(pacTimer_));
     al_register_event_source(eventQueue_, al_get_timer_event_source(enemyTimer_));
     al_register_event_source(eventQueue_, al_get_timer_event_source(newEnemyTimer_));
@@ -54,48 +27,24 @@ Game::Game()
     al_register_event_source(eventQueue_, al_get_display_event_source(display_));
     al_register_event_source(eventQueue_, al_get_keyboard_event_source());
 
-    //Создаем пакмена
+    //Create pacman
     pacman_ = std::make_unique<Tank>(Tank::Type::PACMAN, initPacmanX_, initPacmanY_, 6,
                        100, bitmapTank_, shotSound_, explosion_, this);
-    //Создаем трофеи
+    //Create trophies
     createTrophies();
-    //Создаем врагов
+
+    //Create enemies
     createEnemies();
 }
 
 Game::~Game()
 {
     al_destroy_event_queue(eventQueue_);
-    al_destroy_timer(pacTimer_);
-    al_destroy_timer(enemyTimer_);
-    al_destroy_timer(newEnemyTimer_);
-    al_destroy_timer(newTrophyTimer_);
-    al_destroy_timer(projectileTimer_);
-    al_destroy_timer(shotTimer_);
-
-    al_destroy_sample(shotSound_);
-    al_destroy_sample(explosion_);
-    al_destroy_sample(backgroundSound_);
-    al_destroy_sample_instance(backgroundInstance_);
-
-    al_destroy_font(smallFont_);
-    al_destroy_font(middleFont_);
-    al_destroy_font(largeFont_);
-
+    destroyTimers();
+    destroySounds();
+    destroyFonts();
+    destroyBitmaps();
     al_destroy_display(display_);
-    al_destroy_bitmap(bitmapWall_);
-    al_destroy_bitmap(bitmapPacmanHealth_);
-
-    /*delete pacman_;
-    for(auto &trophy : trophies_)
-        if(trophy != nullptr)
-            delete trophy;
-    for(auto &enemy : enemies_)
-        if(enemy != nullptr)
-            delete enemy;
-    for(auto &projectile : projectiles_)
-        if(projectile != nullptr)
-            delete projectile;*/
 }
 
 void Game::run()
@@ -103,168 +52,143 @@ void Game::run()
     startAllTimers();
     al_play_sample_instance(backgroundInstance_);
 
-    while (!done_)
+    //Game loop
+    while (isRunning_)
     {
-        ALLEGRO_EVENT events;
-        al_wait_for_event(eventQueue_, &events);
-        al_get_keyboard_state(&keyState_);
-        render_ = true;
-        if(events.type == ALLEGRO_EVENT_KEY_UP)
+        update();
+        render();
+    }
+}
+
+void Game::update()
+{
+    ALLEGRO_EVENT events;
+    al_wait_for_event(eventQueue_, &events);
+    al_get_keyboard_state(&keyState_);
+    render_ = true;
+    if(events.type == ALLEGRO_EVENT_KEY_UP)
+    {
+        if(events.keyboard.keycode == ALLEGRO_KEY_ESCAPE)
         {
-            if(events.keyboard.keycode == ALLEGRO_KEY_ESCAPE)
-            {
-                done_ = true;
-            }
-            else if(events.keyboard.keycode == ALLEGRO_KEY_SPACE)
-            {
-                if(!isWin_ && !isGameOver_)
-                {
-                    isGamePaused_ = !isGamePaused_;
-                    if(isGamePaused_)
-                    {
-                        stopAllTimers();
-                        al_stop_sample_instance(backgroundInstance_);
-                    }
-                    else
-                    {
-                        startAllTimers();
-                        al_play_sample_instance(backgroundInstance_);
-                    }
-                    render_ = true;
-                }
-            }
-            else if(events.keyboard.keycode == ALLEGRO_KEY_N)
-            {
-                prepareNewGame();
-                startAllTimers();
-                al_play_sample_instance(backgroundInstance_);
-            }
-            else if(events.keyboard.keycode == ALLEGRO_KEY_F)
-            {
-                if(!isGamePaused_ && !isWin_ && !isGameOver_)
-                {
-                    pacman_->fire();
-                    render_ = true;
-                }
-            }
-            else if(events.keyboard.keycode == ALLEGRO_KEY_P)
-            {
-                printEnemiesCoordinates();
-            }
-            else if(events.keyboard.keycode == ALLEGRO_KEY_K)
-            {
-                printMap();
-            }
+            isRunning_ = false;
         }
-        else if(events.type == ALLEGRO_EVENT_DISPLAY_CLOSE)
+        else if(events.keyboard.keycode == ALLEGRO_KEY_SPACE)
         {
-            done_ = true;
+            togglePause();
         }
-        else if(events.type == ALLEGRO_EVENT_TIMER)
+        else if(events.keyboard.keycode == ALLEGRO_KEY_N)
         {
-            if(events.timer.source == projectileTimer_)
+            prepareNewGame();
+            startAllTimers();
+            al_play_sample_instance(backgroundInstance_);
+        }
+        else if(events.keyboard.keycode == ALLEGRO_KEY_F)
+        {
+            if(gameState_ == GameState::PLAYING)
             {
-                projectilesTimerEvent();
+                pacman_->fire();
                 render_ = true;
             }
-            else if(events.timer.source == pacTimer_)
-            {
-                pacman_->handleUserInput(&keyState_);
-                for(auto &t : trophies_)
-                {
-                    if(!t->isGathered() && pacman_->detectTrophy(t->getX(), t->getY()))
-                    {
-                        pacman_->gatherTrophy(t.get());
-                        break;
-                    }
-                }
-                for(auto &e : enemies_)
-                {
-                    //На время отключаем столкновение с пакменом
-                    if(e->isAlive() && pacman_->isCollision(e.get()))
-                    {
-                        isGameOver_ = true;
-                        break;
-                        render_ = true;
-                    }
-                }
-                if(pacman_->getNumGatheredThrophies() == int(trophies_.size()))
-                {
-                    isWin_ = true;
-                    render_ = true;
-                }
-            }
-            else if(events.timer.source == enemyTimer_)
-            {
-                enemiesTimerEvent();
-            }
-            else if(events.timer.source == shotTimer_)
-            {
-                shotTimerEvent();
-            }
-            else if(events.timer.source == newEnemyTimer_)
-            {
-                //addEnemies();
-            }
-            else if(events.timer.source == newTrophyTimer_)
-            {
-                //createTrophyOnRandPos();
-            }
-            //Попробуем удалить неактивные снаряды и погибшие танки из векторов
-
-            auto trophy_iterator = std::remove_if(trophies_.begin(), trophies_.end(),
-                                   [](auto &trophy)
-                                    {
-                                         return trophy->isGathered();
-                                    });
-            trophies_.erase(trophy_iterator, trophies_.end());
-
-            /*auto enemy_iterator = std::remove_if(enemies_.begin(), enemies_.end(),
-                                   [](Tank *enemy)
-                                    {
-                                        bool isDead = !enemy->isAlive();
-                                        if(isDead) delete enemy;
-                                        return isDead;
-                                    });
-            enemies_.erase(enemy_iterator, enemies_.end());*/
-
-            auto projectile_iterator = std::remove_if(projectiles_.begin(), projectiles_.end(),
-                                   [](auto &projectile)
-                                    {
-                                           return !projectile->isActive();
-                                    });
-            projectiles_.erase(projectile_iterator, projectiles_.end());
-
-            if(isGameOver_ || isWin_)
-            {
-                stopAllTimers();
-                al_stop_sample_instance(backgroundInstance_);
-            }
+        }
+        else if(events.keyboard.keycode == ALLEGRO_KEY_P)
+        {
+            printEnemiesCoordinates();
+        }
+        else if(events.keyboard.keycode == ALLEGRO_KEY_K)
+        {
+            printMap();
+        }
+    }
+    else if(events.type == ALLEGRO_EVENT_DISPLAY_CLOSE)
+    {
+        isRunning_ = false;
+    }
+    else if(events.type == ALLEGRO_EVENT_TIMER)
+    {
+        if(events.timer.source == projectileTimer_)
+        {
+            projectilesTimerEvent();
             render_ = true;
         }
-        if(render_)
+        else if(events.timer.source == pacTimer_)
         {
-            renderMap();
-            renderProjectiles();
-            for(auto &t : trophies_)
-                t->draw();
-            pacman_->draw();
-            for(auto &e : enemies_)
-                e->draw();
-            renderPacmanScore();
-            renderPacmanHealth();
-            if(isGamePaused_ && !isWin_ && !isGameOver_)
-                renderText(SCREEN_WIDTH / 2 - 400, SCREEN_HEIGHT / 2 - 100,
-                         GAME_PAUSED_TEXT, al_map_rgb(255, 255, 255), largeFont_);
-            else if(isWin_)
-                renderText(SCREEN_WIDTH / 2 - 280, SCREEN_HEIGHT / 2 - 100,
-                         WIN_MESSAGE_TEXT, al_map_rgb(255, 255, 0), largeFont_);
-            else if(isGameOver_)
-                renderText(SCREEN_WIDTH / 2 - 280, SCREEN_HEIGHT / 2 - 100,
-                         LOST_MESSAGE_TEXT, al_map_rgb(255, 255, 255), largeFont_);
-            al_flip_display();
-            al_clear_to_color(al_map_rgb(0, 0, 0));
+            pacman_->handleUserInput(&keyState_);
+            handlePacmanCollisions();
+            checkWin();
         }
+        else if(events.timer.source == enemyTimer_)
+        {
+            enemiesTimerEvent();
+        }
+        else if(events.timer.source == shotTimer_)
+        {
+            shotTimerEvent();
+        }
+        else if(events.timer.source == newEnemyTimer_)
+        {
+            //addEnemies();
+        }
+        else if(events.timer.source == newTrophyTimer_)
+        {
+            //createTrophyOnRandPos();
+        }
+        auto trophy_iterator = std::remove_if(trophies_.begin(), trophies_.end(),
+                               [](auto &trophy)
+                                {
+                                     return trophy->isGathered();
+                                });
+        trophies_.erase(trophy_iterator, trophies_.end());
+
+       /* auto enemy_iterator = std::remove_if(enemies_.begin(), enemies_.end(),
+                               [](auto &enemy)
+                                {
+                                    return !enemy->isAlive();
+                                });
+        enemies_.erase(enemy_iterator, enemies_.end());
+        if we erase enemy immediately it will not be burning
+        */
+
+        auto projectile_iterator = std::remove_if(projectiles_.begin(), projectiles_.end(),
+                               [](auto &projectile)
+                                {
+                                       return !projectile->isActive();
+                                });
+        projectiles_.erase(projectile_iterator, projectiles_.end());
+
+        if(gameState_ == GameState::VICTORY ||
+           gameState_ == GameState::DEFEAT)
+        {
+            stopAllTimers();
+            al_stop_sample_instance(backgroundInstance_);
+        }
+        render_ = true;
+    }
+}
+
+void Game::render()
+{
+    if(render_)
+    {
+        renderMap();
+        renderProjectiles();
+        for(auto &t : trophies_)
+            t->draw();
+        pacman_->draw();
+        for(auto &e : enemies_)
+            e->draw();
+        renderPacmanScore();
+        renderPacmanHealth();
+        if(gameState_ == GameState::PAUSED)
+            renderText(SCREEN_WIDTH / 2 - 400, SCREEN_HEIGHT / 2 - 100,
+                     GAME_PAUSED_TEXT, al_map_rgb(255, 255, 255), largeFont_);
+        else if(gameState_ == GameState::VICTORY)
+            renderText(SCREEN_WIDTH / 2 - 280, SCREEN_HEIGHT / 2 - 100,
+                     WIN_MESSAGE_TEXT, al_map_rgb(255, 255, 0), largeFont_);
+        else if(gameState_ == GameState::DEFEAT)
+            renderText(SCREEN_WIDTH / 2 - 280, SCREEN_HEIGHT / 2 - 100,
+                     LOST_MESSAGE_TEXT, al_map_rgb(255, 255, 255), largeFont_);
+        al_flip_display();
+        al_clear_to_color(al_map_rgb(0, 0, 0));
     }
 }
 
@@ -283,20 +207,18 @@ ALLEGRO_BITMAP *Game::getBitmapProjectile() const
     return bitmapProjectile_;
 }
 
-void Game::init()
+void Game::initAllegro5()
 {
     if(!al_init())
     {
-        al_show_native_message_box(nullptr, nullptr, nullptr,
-                                   "Could not initialize Allegro 5", nullptr, 0);
+        throw std::runtime_error("Could not initialize Allegro 5");
     }
 
     display_ = al_create_display(SCREEN_WIDTH, SCREEN_HEIGHT);
 
     if(!display_)
     {
-         al_show_native_message_box(nullptr, nullptr, nullptr,
-                                    "Could not create Allegro Window", nullptr, 0);
+        throw std::runtime_error("Could not create Allegro Window");
     }
 
     al_set_window_position(display_, WINDOW_LEFT, WINDOW_TOP);
@@ -309,11 +231,9 @@ void Game::init()
     al_init_acodec_addon();
     al_install_keyboard();
     al_install_mouse();
-
-
 }
 
-bool Game::loadSettings(const std::string &fileName)
+void Game::loadSettings(const std::string &fileName)
 {
     enum LoadState {INIT_PACMAN_X, INIT_PACMAN_Y, ENEMIES_NUMBER, TROPHIES_AMOUNT,
                    TILE_SET, MAP};
@@ -391,14 +311,94 @@ bool Game::loadSettings(const std::string &fileName)
         }
         fi.close();
         initialMap_ = map_;
-        return !map_.empty() && bitmapWall_ != nullptr;
+        if(map_.empty() || bitmapWall_ == nullptr)
+            throw std::runtime_error("Could not load game settings");
     }
     else
     {
-        al_show_native_message_box(nullptr, nullptr, nullptr,
-                                   "Could not open the settings file", nullptr, 0);
-        return false;
+        throw std::runtime_error("Could not load game settings");
     }
+}
+
+void Game::loadBitmaps()
+{
+    bitmapTank_ = al_load_bitmap("Resources/Images/tank.png");
+    bitmapProjectile_ = al_load_bitmap("Resources/Images/projectile.png");
+    bitmapPacmanHealth_ = al_load_bitmap("Resources/Images/health.png");
+    if(!bitmapTank_ || !bitmapProjectile_ || !bitmapPacmanHealth_)
+    {
+        throw std::runtime_error("Could not load images");
+    }
+}
+
+void Game::loadSounds()
+{
+    shotSound_ = al_load_sample("Resources/Sounds/shot.wav");
+    explosion_ = al_load_sample("Resources/Sounds/explosion.wav");
+    al_reserve_samples(3);
+    backgroundSound_ = al_load_sample("Resources/Sounds/TankMov.wav");
+    if(!shotSound_ || !explosion_ || !backgroundSound_)
+    {
+        throw std::runtime_error("Could not load sounds");
+    }
+    backgroundInstance_ = al_create_sample_instance(backgroundSound_);
+    al_set_sample_instance_playmode(backgroundInstance_ , ALLEGRO_PLAYMODE_LOOP);
+    al_attach_sample_instance_to_mixer(backgroundInstance_ , al_get_default_mixer());
+
+}
+
+void Game::loadFonts()
+{
+    smallFont_ = al_load_font("Resources/Fonts/DroidSansMono.ttf", 36, 0);
+    if(!smallFont_)
+    {
+        throw std::runtime_error("Could not load font");
+    }
+    middleFont_ = al_load_font("Resources/Fonts/DroidSansMono.ttf", 52, 0);
+    largeFont_ = al_load_font("Resources/Fonts/DroidSansMono.ttf", 120, 0);
+}
+
+void Game::createTimers()
+{
+    pacTimer_ = al_create_timer(1 / pacmanMovingSpeed);
+    enemyTimer_ = al_create_timer(1 / enemiesMovingSpeed);
+    newEnemyTimer_ = al_create_timer(newEnemyFrequency);
+    newTrophyTimer_ = al_create_timer(newTrophyFrequency);
+    shotTimer_ = al_create_timer(1 / enemiesShootingSpeed);
+    projectileTimer_ = al_create_timer(1 / projectilesMovingSpeed);
+}
+
+void Game::destroyBitmaps()
+{
+    al_destroy_bitmap(bitmapWall_);
+    al_destroy_bitmap(bitmapPacmanHealth_);
+    al_destroy_bitmap(bitmapTank_);
+    al_destroy_bitmap(bitmapProjectile_);
+}
+
+void Game::destroyFonts()
+{
+    al_destroy_font(smallFont_);
+    al_destroy_font(middleFont_);
+    al_destroy_font(largeFont_);
+}
+
+void Game::destroySounds()
+{
+    al_destroy_sample(shotSound_);
+    al_destroy_sample(explosion_);
+    al_destroy_sample(backgroundSound_);
+    al_destroy_sample_instance(backgroundInstance_);
+}
+
+void Game::destroyTimers()
+{
+    al_destroy_timer(pacTimer_);
+    al_destroy_timer(enemyTimer_);
+    al_destroy_timer(newEnemyTimer_);
+    al_destroy_timer(newTrophyTimer_);
+    al_destroy_timer(projectileTimer_);
+    al_destroy_timer(shotTimer_);
 }
 
 void Game::prepareNewGame()
@@ -414,9 +414,7 @@ void Game::prepareNewGame()
     enemies_.clear();
     createEnemies();
     projectiles_.clear();
-    isGamePaused_ = false;
-    isGameOver_ = false;
-    isWin_ = false;
+    gameState_ = GameState::PLAYING;
 }
 
 void Game::createTrophies()
@@ -502,7 +500,23 @@ void Game::createEnemies()
                                bitmapTank_, shotSound_, explosion_, this);
         enemies_.push_back(std::move(enemy));
     }
-    //printEnemiesCoordinates();
+}
+
+void Game::togglePause()
+{
+    if(gameState_ == GameState::PLAYING)
+    {
+        gameState_ = GameState::PAUSED;
+        stopAllTimers();
+        al_stop_sample_instance(backgroundInstance_);
+    }
+    else if(gameState_ == GameState::PAUSED)
+    {
+        gameState_ = GameState::PLAYING;
+        startAllTimers();
+        al_play_sample_instance(backgroundInstance_);
+    }
+    render_ = true;
 }
 
 void Game::addEnemies()
@@ -597,7 +611,7 @@ void Game::moveProjectiles()
                         break;
                     case 'M' :
                         projectile->explode();
-                        isGameOver_ = true;
+                        gameState_ = GameState::DEFEAT;
                         break;
                     default:
                         break;
@@ -614,7 +628,7 @@ void Game::resolveCollisions(Tank *tank)
     {
         if(tank->isCollision(pacman_.get()))
         {
-            isGameOver_ = true;
+            gameState_ = GameState::DEFEAT;
             return;
         }
         for(auto &other : enemies_)
@@ -668,7 +682,7 @@ void Game::enemiesTimerEvent()
     {
         e->move();
         resolveCollisions(e.get());
-        if(isGameOver_)
+        if(gameState_ == GameState::DEFEAT)
             break;
      }
 }
@@ -690,7 +704,7 @@ void Game::projectilesTimerEvent()
             {
                 pacman_->explode();
                 if(!pacman_->isAlive())
-                    isGameOver_ = true;
+                    gameState_ = GameState::DEFEAT;
             }
         }
     }
@@ -722,9 +736,39 @@ void Game::shotTimerEvent()
                 if(isCeaseFire)
                     break;
             }
-            if(!isGamePaused_ && !isWin_ && !isGameOver_ && !isCeaseFire)
+            if(gameState_ == GameState::PLAYING && !isCeaseFire)
                 e->fire();
         }
+    }
+}
+
+void Game::handlePacmanCollisions()
+{
+    for(auto &t : trophies_)
+    {
+        if(!t->isGathered() && pacman_->detectTrophy(t->getX(), t->getY()))
+        {
+            pacman_->gatherTrophy(t.get());
+            break;
+        }
+    }
+    for(auto &e : enemies_)
+    {
+        if(e->isAlive() && pacman_->isCollision(e.get()))
+        {
+            gameState_ = GameState::DEFEAT;
+            break;
+            render_ = true;
+        }
+    }
+}
+
+void Game::checkWin()
+{
+    if(pacman_->getNumGatheredThrophies() == trophiesAmount_)
+    {
+        gameState_ = GameState::VICTORY;
+        render_ = true;
     }
 }
 
@@ -761,7 +805,7 @@ void Game::renderMap()
             }
             else if(map_[row][col] == 'M')
             {
-               if(!isGameOver_)
+               if(gameState_ != GameState::DEFEAT)
                     al_draw_bitmap_region(bitmapWall_, 4 * tileSize, 0, tileSize,
                                           tileSize, col * tileSize, row *tileSize, 0);
             }
@@ -776,7 +820,7 @@ void Game::renderText(const int &textLeft, const int &textTop, const std::string
 void Game::renderPacmanScore() const
 {
     std::stringstream ss;
-    ss << "Score: " << pacman_->getScore();
+    ss << "Score: " << pacman_->getScore() << " Trophies: " << pacman_->getNumGatheredThrophies();
     al_draw_text(smallFont_, al_map_rgb(255,50,0), 20 ,
                  SCREEN_HEIGHT - 55, ALLEGRO_ALIGN_LEFT, ss.str().c_str());
 }
@@ -786,7 +830,7 @@ void Game::renderPacmanHealth() const
     al_draw_text(smallFont_, al_map_rgb(70, 80, 255),
     SCREEN_WIDTH + 5 - (pacman_->getHealth() / 20) *
                  (al_get_bitmap_width(bitmapPacmanHealth_) + 5),
-    SCREEN_HEIGHT - 55, ALLEGRO_ALIGN_RIGHT, "Pacman health: ");
+    SCREEN_HEIGHT - 55, ALLEGRO_ALIGN_RIGHT, "Lives: ");
     for(int i = 0; i < pacman_->getHealth() / 20; ++i)
         al_draw_bitmap(bitmapPacmanHealth_, SCREEN_WIDTH - 40 - i *
                        (al_get_bitmap_width(bitmapPacmanHealth_) + 5),
