@@ -11,7 +11,7 @@ public:
     Type getType() const;
     void gather();
     bool isGathered();
-    void draw();
+    void render();
 private:
     int tileSize_;
     int x_, y_; // Координаты не в пикселях, а в тайлах!

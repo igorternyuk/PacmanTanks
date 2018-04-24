@@ -132,28 +132,8 @@ void Game::update()
         {
             //createTrophyOnRandPos();
         }
-        auto trophy_iterator = std::remove_if(trophies_.begin(), trophies_.end(),
-                               [](auto &trophy)
-                                {
-                                     return trophy->isGathered();
-                                });
-        trophies_.erase(trophy_iterator, trophies_.end());
 
-       /* auto enemy_iterator = std::remove_if(enemies_.begin(), enemies_.end(),
-                               [](auto &enemy)
-                                {
-                                    return !enemy->isAlive();
-                                });
-        enemies_.erase(enemy_iterator, enemies_.end());
-        if we erase enemy immediately it will not be burning
-        */
-
-        auto projectile_iterator = std::remove_if(projectiles_.begin(), projectiles_.end(),
-                               [](auto &projectile)
-                                {
-                                       return !projectile->isActive();
-                                });
-        projectiles_.erase(projectile_iterator, projectiles_.end());
+        clearDestroyedEntitites();
 
         if(gameState_ == GameState::VICTORY ||
            gameState_ == GameState::DEFEAT)
@@ -172,10 +152,10 @@ void Game::render()
         renderMap();
         renderProjectiles();
         for(auto &t : trophies_)
-            t->draw();
-        pacman_->draw();
+            t->render();
+        pacman_->render();
         for(auto &e : enemies_)
-            e->draw();
+            e->render();
         renderPacmanScore();
         renderPacmanHealth();
         if(gameState_ == GameState::PAUSED)
@@ -675,6 +655,30 @@ void Game::stopAllTimers()
     al_stop_timer(shotTimer_);
 }
 
+void Game::clearDestroyedEntitites()
+{
+    auto trophy_iterator = std::remove_if(trophies_.begin(), trophies_.end(),
+                           [](auto &trophy)
+                            {
+                                 return trophy->isGathered();
+                            });
+    trophies_.erase(trophy_iterator, trophies_.end());
+
+    auto enemy_iterator = std::remove_if(enemies_.begin(), enemies_.end(),
+                           [](auto &enemy)
+                            {
+                                return !enemy->isAlive() && enemy->isBurned();
+                            });
+    enemies_.erase(enemy_iterator, enemies_.end());
+
+    auto projectile_iterator = std::remove_if(projectiles_.begin(), projectiles_.end(),
+                           [](auto &projectile)
+                            {
+                                   return !projectile->isActive();
+                            });
+    projectiles_.erase(projectile_iterator, projectiles_.end());
+}
+
 void Game::enemiesTimerEvent()
 {
     for(auto &e : enemies_)
@@ -774,7 +778,7 @@ void Game::checkWin()
 void Game::renderProjectiles()
 {
     for(auto &projectile : projectiles_)
-            projectile->draw();
+            projectile->render();
 }
 
 void Game::renderMap()

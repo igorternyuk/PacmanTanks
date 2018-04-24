@@ -42,7 +42,7 @@ bool Trophy::isGathered()
     return isGathered_;
 }
 
-void Trophy::draw()
+void Trophy::render()
 {
     const int radius = 9;
     ALLEGRO_COLOR color;

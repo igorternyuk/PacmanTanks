@@ -493,7 +493,7 @@ void Tank::repair()
     health_ = 100;
 }
 
-void Tank::draw()
+void Tank::render()
 {
     if(isAlive_)
     {
@@ -504,11 +504,11 @@ void Tank::draw()
     }
     else
     {
-        drawFired();
+        renderFired();
     }
 }
 
-void Tank::drawFired()
+void Tank::renderFired()
 {
     if(counter_ < 20)
     {
@@ -522,6 +522,7 @@ void Tank::drawFired()
             sourceX_ = 0;
         ++counter_;
     }
+    isBurned_ = true;
 }
 
 void Tank::printDir()
@@ -540,6 +541,11 @@ void Tank::printDir()
             std::cout << "Dir = DOWN" << std::endl;
             break;
     }
+}
+
+bool Tank::isBurned() const
+{
+    return isBurned_;
 }
 
 bool Tank:: isPointOnTheField(int x_a, int y_a)

@@ -121,6 +121,7 @@ private:
     void resolveCollisions(Tank *tank);
     void startAllTimers();
     void stopAllTimers();
+    void clearDestroyedEntitites();
 
     void renderProjectiles();
     void renderMap();

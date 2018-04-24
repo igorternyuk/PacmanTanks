@@ -50,9 +50,10 @@ public:
     bool isOnCrossRoads();
     void explode();
     void repair();
-    void draw();
-    void drawFired();
+    void render();
+    void renderFired();
     void printDir();
+    bool isBurned() const;
 
 private:
     Tank::Type type_;
@@ -76,6 +77,7 @@ private:
     int projectileSpeed_ = 10;
     int counter_ = 0;
     bool isBraked_ = false;
+    bool isBurned_ = false;
 
     bool isPointOnTheField(int x_a, int y_a);
     void prepareToTheNextBarrier(char nextPositionOnTheMap, bool &isPossibleToMove);

@@ -86,7 +86,7 @@ bool Projectile::isActive() const
     return isActive_;
 }
 
-void Projectile::draw() const
+void Projectile::render() const
 {
     if(isActive_)
     {

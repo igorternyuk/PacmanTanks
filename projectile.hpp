@@ -19,7 +19,7 @@ public:
     void explode();
     bool isCollision(Tank *target);
     bool isActive() const;
-    void draw() const;
+    void render() const;
 
 private:
     int x_, y_;
