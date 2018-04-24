@@ -1,2 +1,2 @@
-Simple Tanks game created using Allegro5
-![Alt text](screendhot.png?raw=true "Screenshot")
+Simple game of tanks created using Allegro5
+![Alt text](screenshot.png?raw=true "Screenshot")

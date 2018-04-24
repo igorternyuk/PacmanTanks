@@ -216,7 +216,7 @@ void Tank::move()
             }
             break;
         case Direction::RIGHT :
-            if(x_ < (map_[y_ / tileSize_].size() - 1) * tileSize_ )
+            if(x_ < ((int)map_[y_ / tileSize_].size() - 1) * tileSize_ )
             {
                 if(x_ % tileSize_ == 0)
                     prepareToTheNextBarrier(map_[y_ / tileSize_][x_ / tileSize_ + 1], isMovePossible);
@@ -269,7 +269,7 @@ bool Tank::isPossibleDir(const Direction &dir)
                         : true;
                 break;
             case Direction::RIGHT :
-                result = (x_r < map_[y_r].size() - 1)
+                result = (x_r < (int)map_[y_r].size() - 1)
                          ? (map_[y_r][x_r + 1] != 'X'
                            && map_[y_r][x_r + 1] != 'B'
                            && map_[y_r][x_r + 1] != 'C')
@@ -283,7 +283,7 @@ bool Tank::isPossibleDir(const Direction &dir)
                         : true;
                 break;
             case Direction::DOWN :
-                result = (y_r < map_.size() - 1)
+                result = (y_r < (int)map_.size() - 1)
                          ? (map_[y_r + 1][x_r] != 'X'
                             && map_[y_r + 1][x_r] != 'B'
                             && map_[y_r + 1][x_r] != 'C')
@@ -348,6 +348,7 @@ float Tank::calcDistanceToTheTarget(Direction dir, const Tank * const target)
             return (x_ - targetX) * (x_ - targetX) +
                     (y_ + speed_ - targetY) * (y_ + speed_ - targetY);
     }
+    return 0.0f;
 }
 
 void Tank::chooseShortestWay(const Tank * const pacman)
@@ -547,9 +548,9 @@ bool Tank:: isPointOnTheField(int x_a, int y_a)
     int x_r = x_a / tileSize_; //25
     int y_r = y_a / tileSize_; //17
     bool result = true;
-    if(y_r < 0 || y_r > map_.size() - 1)
+    if(y_r < 0 || y_r > (int)map_.size() - 1)
         result = false;
-    else if(x_r < 0 || x_r > map_[y_r].size() - 1)
+    else if(x_r < 0 || x_r > (int)map_[y_r].size() - 1)
              result = false;
     return result;
 }

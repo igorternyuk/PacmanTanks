@@ -521,8 +521,6 @@ void Game::togglePause()
 
 void Game::addEnemies()
 {
-    //Tank *enemy1 = new Tank(ENEMY, 0, 0, 3, 100, shotSound_, explosion_, this);
-    //enemies_.push_back(enemy1);
     static bool tanksFromTop = false;
     tanksFromTop = !tanksFromTop;
     bool isTopLeftPosOK = true;
@@ -533,12 +531,12 @@ void Game::addEnemies()
     {
         if(e->getX() / 30 == 0 && e->getY() / 30 == 0)
            isTopLeftPosOK = false;
-        if(e->getX() / 30 == map_[0].size() - 1 && e->getY() / 30 == 0)
+        if(e->getX() / 30 == int(map_[0].size()) - 1 && e->getY() / 30 == 0)
 
            isTopRightPosOK = false;
-        if(e->getX() / 30 == 0 && e->getY() / 30 == map_.size() - 1)
+        if(e->getX() / 30 == 0 && e->getY() / 30 == int(map_.size()) - 1)
            isBottomLeftPosOK = false;
-        if(e->getX() / 30 == map_[0].size() - 1 && e->getY() / 30 == map_.size() - 1)
+        if(e->getX() / 30 == int(map_[0].size()) - 1 && e->getY() / 30 == int(map_.size()) - 1)
            isBottomRightPosOK = false;
     }
     if(tanksFromTop)
@@ -596,7 +594,8 @@ void Game::moveProjectiles()
             int tileSize = al_get_bitmap_height(bitmapWall_);
             int px = projectile->getX() / tileSize;
             int py = projectile->getY() / tileSize;
-            if(!(py >= 0 && py < map_.size() && px >= 0 && px < map_.at(py).size()))
+            if(!(py >= 0 && py < int(map_.size()) && px >= 0 &&
+                 px < int(map_.at(py).size())))
                 projectile->explode();
             else
             {
@@ -852,9 +851,9 @@ void Game::printEnemiesCoordinates() const
 void Game::printMap() const
 {
     std::cout << "-------Печатаем карту----------" << std::endl;
-    for(int i = 0; i < map_.size(); ++i)
+    for(size_t i = 0; i < map_.size(); ++i)
     {
-        for(int j = 0; j < map_.at(i).size(); ++j)
+        for(size_t j = 0; j < map_.at(i).size(); ++j)
         {
             std::cout << map_.at(i).at(j);
         }
